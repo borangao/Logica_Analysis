@@ -1,14 +1,20 @@
-name: "Logica_Analysis"
+name: Logica_Analysis
 output_dir: ../docs
 navbar:
-  title: "Logica_Analysis"
+  title: Logica_Analysis
   left:
   - text: Home
     href: index.html
-  - text: About
-    href: about.html
+  - text: Data Preparation
+    href: QC_Pipeline.html
+  - text: Run Logica
+    href: Run_Logica.html
   - text: License
     href: license.html
+  right:
+  - icon: fab fa-github
+    text: Source code
+    href: https://github.com/borangao/Logica_Analysis
 output:
   workflowr::wflow_html:
     toc: yes
