@@ -1,0 +1,157 @@
+---
+title: "Data Preparation"
+author: "borangao"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+# Data Preparation 
+
+> **Note:** Following this guideline will help maintain the integrity and accuracy of the local genetic correlation process across ancestries.
+
+## Step-by-Step Guideline
+
+For illustrative purposes, we utilized the GWAS summary statistics of LDL from the UK Biobank ([UKBB](https://www.nealelab.is/uk-biobank)) and the Asian GWAS meta-analyzed from Biobank Japan, Korean Biobank, and Taiwan Biobank. We provide a series of R scripts for data preparation, available in the `inst` folder of this repository. The scripts are designed to be run sequentially, and we recommend executing them using the `Rscript` command.
+
+### 1. GWAS and Reference Panel Quality Control and SNP Alignment
+
+This script performs quality control (QC) on GWAS summary statistics and genotype reference panel data for two specified ancestries. It aligns SNPs between GWAS datasets and corresponding reference panels, filters for common SNPs, and prepares genotype files suitable for downstream analyses.
+
+#### Required Input Formats
+
+**1. Reference Genotype Files:**
+
+- PLINK binary files (`.bed`, `.bim`, `.fam`) organized by chromosome
+- All files placed in a single directory per ancestry
+- Example filename format: `EUR_chr_1.bed`, `EUR_chr_1.bim`, `EUR_chr_1.fam`
+
+**2. GWAS Summary Statistics Files:**
+
+- **Required columns:**
+  - `CHROM`: Chromosome
+  - `POS`: Base-pair position
+  - `SNP`: SNP identifier
+  - `ALLELE0`: Reference allele
+  - `ALLELE1`: Alternative allele
+  - `Z`: Z-score
+  - `N`: Sample size
+
+- **Optional columns:**
+  - `BETA`: Effect size
+  - `SE`: Standard error
+  - `A1FREQUENCY`: Allele frequency
+
+#### Input Parameter Descriptions:
+
+- `input_dir_1`: Directory containing PLINK files for ancestry 1.
+- `input_prefix_1`: Filename prefix for ancestry 1 (e.g., `EUR_chr`).
+- `ancestry_1`: Label for ancestry 1 (e.g., `EUR`).
+- `gwas_1`: Path to GWAS summary statistics file for ancestry 1.
+- `input_dir_2`: Directory containing PLINK files for ancestry 2.
+- `input_prefix_2`: Filename prefix for ancestry 2 (e.g., `EAS_chr`).
+- `ancestry_2`: Label for ancestry 2 (e.g., `EAS`).
+- `gwas_2`: Path to GWAS summary statistics file for ancestry 2.
+- `trait`: Name of the trait analyzed (e.g., `LDL`).
+- `output_dir`: Directory for output files.
+- `plink_path`: Full path to PLINK 2 executable.
+- `skip_geno_qc`: Boolean flag to skip genotype QC steps (default FALSE).
+
+#### Main Functionalities:
+
+- QC on GWAS summary statistics (filters ambiguous SNPs, missing data, allele frequency, and MHC region).
+- QC on reference genotype data using PLINK (filters MAF, genotype rate, and HWE).
+- Alignment of SNPs across two ancestries and GWAS summary statistics.
+- Generates standardized outputs:
+  - QC'd genotype files (PLINK binary format by chromosome)
+  - Aligned GWAS summary statistics
+  - SNP lists for further analysis
+
+#### Dependencies:
+
+- **R libraries:** `optparse`, `data.table`, `dplyr`
+- **External software:** PLINK 2
+
+#### Example Usage:
+
+```bash
+Rscript Step1_GWAS_Reference_Align.R \
+  --input_dir_1 path/to/ancestry1 \
+  --input_prefix_1 EUR_chr \
+  --ancestry_1 EUR \
+  --gwas_1 EUR_GWAS.txt \
+  --input_dir_2 path/to/ancestry2 \
+  --input_prefix_2 EAS_chr \
+  --ancestry_2 EAS \
+  --gwas_2 EAS_GWAS.txt \
+  --trait LDL \
+  --output_dir path/to/output \
+  --plink_path /path/to/plink2 \
+  --skip_geno_qc FALSE
+```
+
+#### Practical Example:
+
+```{r, message=FALSE, warning=FALSE,tidy = TRUE}
+system(paste0("Rscript Step1_GWAS_Reference_Align.R --input_dir_1 /net/fantasia/home/borang/MALGC/ukb_bbj_ref/EUR/ --input_prefix_1 EUR_chr --ancestry_1 EUR  --gwas_1 /net/fantasia/home/borang/MALGC/real_data/European/UKBB/UKBB_QC/LDL_common.txt --input_dir_2 /net/fantasia/home/borang/MALGC/ukb_bbj_ref/EAS/ --input_prefix_2 EAS_chr --ancestry_2 EAS --gwas_2 /net/fantasia/home/borang/MALGC/real_data/Asian/Meta/LDL_common.txt --trait LDL  --output_dir /net/fantasia/home/borang/MALGC/pipeline_example --plink_path /net/fantasia/home/borang/software/plink2 --skip_geno_qc TRUE"))
+```
+
+### 2. Split Region and Construct LD Matrix and Eigen-Decomposition for LDER
+
+This script extracts SNPs within specified LD blocks from genotype data, computes LD matrices for each ancestry, performs eigen decomposition of the LD matrices, and generates inputs compatible with Linkage Disequilibrium Eigenvalue Regression (LDER).
+
+#### Required Input Formats:
+
+**1. Genotype Files:**
+- PLINK binary files (`.bed`, `.bim`, `.fam`) organized by chromosome
+- Files in a single directory named `geno`
+- Filename example: `EUR_chr_1_aligned.bed`, `EUR_chr_1_aligned.bim`, `EUR_chr_1_aligned.fam`
+
+**2. GWAS Aligned Summary Statistics Files:**
+- Required columns: `CHROM`, `POS`, `SNP`, `ALLELE0`, `ALLELE1`, `Z`
+- Organized by trait and ancestry
+- Example filename: `LDL_EUR_aligned.txt`
+
+**3. LD Block File:**
+- BED file specifying LD blocks (chromosome, start, end positions)
+
+#### Dependencies:
+
+- **R libraries:** `optparse`, `data.table`, `dplyr`, `snpStats`
+
+#### Example Usage:
+
+```{r, message=FALSE, warning=FALSE,tidy = TRUE}
+system(paste0("Rscript ~/MALGC/MALGC_software/Data_Process/Step2_LD_Region.R --input_dir /net/fantasia/home/borang/MALGC/pipeline_example --output_dir /net/fantasia/home/borang/MALGC/pipeline_example --ancestry_1 EUR --ancestry_2 EAS --trait LDL --block_index 1 --ld_block_file /net/fantasia/home/borang/MALGC/ld_blocks/grch37.eur.eas.loci.bed "))
+```
+
+#### Parellel Computing
+
+We provided a Step2_LD_Region.sh file for parallel computing. 
+
+### 3. LDER Intercept Estimation
+
+This script performs Linkage Disequilibrium Eigenvalue Regression (LDER) analysis using GWAS summary statistics for two specified ancestries. It aggregates LD block data, computes intercepts using the 'lder' function from the LDER R package, and saves intercept estimates for downstream genetic correlation analyses.
+
+#### Required Input Formats:
+
+- Preprocessed LDER GWAS blocks:
+  - `.RData` files generated from eigen decomposition analyses
+  - Files stored as `input_dir/[trait]/[trait]_Block/`
+  - Filename example: `LDL_LDER_block_1.RData`
+
+#### Dependencies:
+
+- **R libraries:** `optparse`, `data.table`, `dplyr`, `LDER`
+- **Installation:** `devtools::install_github('borangao/LDER')`
+
+#### Example Usage:
+
+```{r, message=FALSE, warning=FALSE,tidy = TRUE}
+system(paste0("Rscript /net/fantasia/home/borang/MALGC/MALGC_software/Data_Process/Step3_LDER.R --input_dir /net/fantasia/home/borang/MALGC/pipeline_example  --ancestry_1 EUR --n_ancestry_1 343621 --ancestry_2 EAS --n_ancestry_2 237613  --trait LDL"))
+```
+
+#### Output:
+
+- Intercept estimates saved as `[Trait]_intercept.RData` in `input_dir/[Trait]/`.
+

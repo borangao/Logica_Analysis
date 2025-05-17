@@ -1,10 +1,17 @@
 ---
-title: "About"
+title: "Introduction to Logica"
+author: "Boran Gao"
+site: workflowr::wflow_site
 output:
   workflowr::wflow_html:
-    toc: false
+    toc: true
 editor_options:
   chunk_output_type: console
 ---
 
-Describe your project.
+# Introduction to Logica
+Logica (LOcal GenetIc Correlation across Ancestries) is a new method specifically designed to estimate local genetic correlations across ancestries. Logica employs a bivariate linear mixed model that explicitly accounts for diverse LD patterns across ancestries, operates on GWAS summary statistics, and utilizes a maximum likelihood framework for robust inference.
+
+## Logica Overview
+
+![](Logica_Overview.png)

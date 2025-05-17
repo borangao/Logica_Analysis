@@ -1,0 +1,82 @@
+---
+title: "Run Logica"
+author: "borangao"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+# Installation of Logica
+
+```{r,message=FALSE,warning=FALSE}
+library(devtools)
+# Install Logica
+install_github("borangao/Logica",dependencies = FALSE)
+# Load Logica
+library(Logica)
+```
+
+# Logica Example
+## 1. Data Formatting for Logica:
+
+Use the example from Data preparation.
+
+```{r,message=FALSE, warning=FALSE}
+library(data.table)
+library(Logica)
+block_index = 1
+trait = "LDL"
+ancestry_1 = "EUR"
+ancestry_2 = "EAS"
+z1<-fread(file.path("/net/fantasia/home/borang/MALGC/pipeline_example/LDL/LDL_Block",paste0(trait , "_",ancestry_1,"_block_",block_index ,".txt")))
+z2<-fread(file.path("/net/fantasia/home/borang/MALGC/pipeline_example/LDL/LDL_Block",paste0(trait , "_",ancestry_2,"_block_",block_index ,".txt")))
+load(file.path("/net/fantasia/home/borang/MALGC/pipeline_example/LDL/LD_ref",paste0("LD_",block_index ,".RData")))
+load(file.path("/net/fantasia/home/borang/MALGC/pipeline_example/LDL/LDL_Block",paste0(trait,"_intercept.RData")))
+
+preprocess_data_file<-preprocess_data(z1,z2,ancestry_1_cov,ancestry_2_cov)
+```
+
+## 2. Run Logica:
+```{r,message=FALSE, warning=FALSE}
+logica_res<-run_Logica(preprocess_data_file$pop1$z,preprocess_data_file$pop2$z, preprocess_data_file$pop1$R, preprocess_data_file$pop2$R, median(preprocess_data_file$pop1$z$N), 
+                        median(preprocess_data_file$pop2$z$N), 
+                        z1_intercept = ancestry_1_lder_intercept, z2_intercept = ancestry_2_lder_intercept, fix_intercept = TRUE)
+```
+
+### Logica Result Interpretation:
+```{r,message=FALSE, warning=FALSE}
+print(logica_res)
+```
+
+**Logica Result Interpretation:**
+
+- **chr**: Chromosome identifier for the genomic region analyzed.
+- **start** and **end**: Genomic coordinates marking the start and end positions of the analyzed region.
+- **Est_h2_1**: Estimated heritability for ancestry 1, indicating the proportion of phenotypic variance explained by genetic factors within this region.
+- **Est_h2_2**: Estimated heritability for ancestry 2, interpreted similarly to Est_h2_1.
+- **Est_cov**: Estimated genetic covariance between ancestry 1 and ancestry 2, measuring the degree of shared genetic influence.
+- **Est_rho**: Estimated genetic correlation derived from covariance (Est_cov), standardized by heritabilities, quantifying genetic similarity across ancestries.
+- **P_h2_1**: P-value testing if heritability for ancestry 1 differs significantly from zero.
+- **P_h2_2**: P-value testing if heritability for ancestry 2 differs significantly from zero.
+- **P_rho_score**: Score-based test P-value assessing the significance of genetic correlation.
+- **P_rho_LLK**: Likelihood-based test P-value assessing the significance of genetic correlation.
+
+> **Note:** We also provided code for submitting slurm array jobs to enable parallele computing Step4_Logica.R and Step4_Logica.sh
+
+## 3. Testing Composite Null Hypothesis
+
+ The composite null hypothesis is constructed by combining the individual null hypotheses from each genomic region.
+ 
+```{r,message=FALSE, warning=FALSE}
+setwd("/net/fantasia/home/borang/MALGC/pipeline_example/LDL_Block")
+list.files(pattern = "Logica_res_LDL_block") -> file_list
+library(data.table)
+all_file<-c()
+for(file in file_list){
+  logica_res<-fread(file)
+  all_file<-rbind(all_file,logica_res)
+}
+
+all_file$p_h2_HDMT<-p_HDMT(all_file$P_h2_1,all_file$P_h2_2)
+head(all_file,10)
+```
