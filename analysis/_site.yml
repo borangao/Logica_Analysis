@@ -14,7 +14,7 @@ navbar:
   right:
   - icon: fab fa-github
     text: Source code
-    href: https://github.com/borangao/Logica_Analysis
+    href: https://github.com/borangao/Logica
 output:
   workflowr::wflow_html:
     toc: yes
